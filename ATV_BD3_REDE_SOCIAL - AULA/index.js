@@ -1,86 +1,77 @@
 const express = require('express');
-
-const http = require('http');
-
-const SocketIO = require('socket.io');
+const http = require('http');       
+const socketIo = require('socket.io'); 
 
 const app = express();
-
 const server = http.createServer(app);
-const io = SocketIO(server);
-const mongoose = require('mongoose');
-
+const io = socketIo(server); 
+const mongoose = require('mongoose'); 
 const ejs = require('ejs');
-
 const path = require('path');
-const { Socket } = require('dgram');
+const {Socket} = require('dgram');
+const { error } = require('console');
 
 app.use(express.static(path.join(__dirname, 'public')));
-// console.log(path.join(__dirname, 'public'));
-
-
 app.set('views', path.join(__dirname, 'public'));
-
 app.engine('html', ejs.renderFile);
 
 app.use('/', (req, res) => {
     res.render('index.html');
-})
+});
+
 function connectDB() {
-    let dbURL = "mongodb+srv://karinnymedeiros:lunar16@cluster0.oqv0t.mongodb.net/bd3post"
+    let dbURL = "mongodb+srv://karinnymedeiros:lunar16@cluster0.oqv0t.mongodb.net/bd3post";
     mongoose.connect(dbURL);
     mongoose.connection.on('error', console.error.bind(console, 'connection error:'));
     mongoose.connection.once('open', function () {
         console.log('ATLAS MONGO DB CONECTADO COM SUCESSO!');
-    })
-
+    });
 }
+
+// Use a função correta para estabelecer a conexão com o banco de dados.
 connectDB();
 
-let Message = mongoose.model('message', { usuario: String, data_hora: String, message: String });
-
-/*##### LOGICA DO SOCKET.IO - ENVIO E PROPRAGAÇÃO DE MENSAGEM #####*/
-
-let messages = [];
-
-Message.find({}).then(docs => {
-    messages = docs
-}).catch(error => {
-    console.log(error);
+let Message = mongoose.model('MessagesChat',{
+   titulo: String,
+   data_hora: String,
+   post: String
 });
 
-/*##### ESTRUTURA DE CONEXÃO DO SOCKET.IO  #####*/
+/* LOGICA DO SOCKET.IO - ENVIO PROPAGAÇÃO DE MENSAGENS */
+let messages = [];
+Message.find({})
+   .then(docs => {
+      messages = docs;
+   }).catch(error => {
+      console.log(error);
+   });
 
 io.on('connection', socket => {
+   console.log('Usuário conectado! ' + socket.id);
 
-    //Teste de conexão:
+   // Buscar mensagens do MongoDB sempre que um usuário se conectar
+   Message.find({})
+      .then(docs => {
+         socket.emit('previousMessages', docs);
+      })
+      .catch(error => {
+         console.log(error);
+      });
 
-    console.log('NOVO USUÁRIO CONECTADO:' + socket.id)
-    // recupera e mantem (exibe) as mensagens entre o fron e o back:
-    socket.emit('previousMessage', messages);
-
-    // Logica de chat quando uma mensagem é enviada:
-    socket.on('sendMessage', data => {
-
-        //Adiciona a mensagem no final do array da mensagens:
-        //   messages.push(data);
-        let message = new Message(data)
-
-        message.save()
-            .then(
-                socket.broadcast.emit('receiveMessage', data)
-            )
-            .catch(error => {
-                console.log(error);
-
-            });
-        console.log("QTD MENSAGENS:" + messages.length);
-
-    });
-    console.log("QTD MENSAGENS:" + messages.length);
-
-})
+   socket.on('sendMessage', data => {
+      let message = new Message(data); 
+      message.save()
+         .then(() => {
+            // Envia para todos, inclusive para quem enviou
+            io.emit('receivedMessage', data);
+         })
+         .catch(error => {
+            console.error(error);
+         });
+      console.log('Mensagem salva e enviada!');
+   });
+});
 
 server.listen(3000, () => {
-    console.log('CHAT RODANDO EM - http://localhost:3000')
+   console.log('CHAT RODANDO EM - http://localhost:3000');
 });

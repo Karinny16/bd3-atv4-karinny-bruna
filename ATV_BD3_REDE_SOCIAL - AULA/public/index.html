@@ -1,9 +1,3 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ATIVIDADE - REDE SOCIAL</title>
     <link rel="stylesheet" href="./styles.css">
     <!-- Inclua o jQuery -->
@@ -44,25 +38,25 @@
     <script>
         const socket = io('http://localhost:3000');
 
-        function renderMessage(message) {
+    function renderMessage(message) {
             $('.posts_container').append(
                 '<div class="post_container">' +
-                    '<p><strong>' + message.usuario + '</strong></p>' +
-                    '<p>' + message.message + '</p>' +
+                    '<p><strong>' + message.titulo + '</strong></p>' +
+                    '<p>' + message.post + '</p>' +
                     '<p>' + message.data_hora + '</p>' +
                 '</div>'
             );
         }
 
         // Exibe mensagens anteriores
-        socket.on('previousMessage', function (messages) {
+        socket.on('previousMessages', function (messages) {
             for (let message of messages) {
                 renderMessage(message);
             }
         });
 
-        // Ouve novas mensagens com o nome correto do evento
-        socket.on('receiveMessage', function (message) {
+        // Ouve novas mensagens
+        socket.on('receivedMessage', function (message) {
             renderMessage(message);
         });
 
@@ -75,12 +69,11 @@
             let agora = new Date();
             let dataHoraMsg = `[${agora.getDate()}/${(agora.getMonth() + 1)}/${agora.getFullYear()} - ${agora.getHours()}:${agora.getMinutes()}:${agora.getSeconds()}]`;
 
-            var postObject = {
-                usuario: titulo,
-                message: textoPost,
-                data_hora: dataHoraMsg
-
-            };
+         var postObject = {
+            titulo: titulo,
+            post: textoPost,
+            data_hora: dataHoraMsg
+        };
 
             renderMessage(postObject);
             socket.emit('sendMessage', postObject);
